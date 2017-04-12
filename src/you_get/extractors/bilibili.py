@@ -80,12 +80,12 @@ def bilibili_download_by_cids(cids, title, output_dir='.', merge=True, info_only
         _, type_, temp = url_info(url)
         size += temp
 
-    print_info(site_info, title, type_, size)
+    print_info(site_info, title, type_, size, tags=tags)
     if not info_only:
         download_urls(urls, title, type_, total_size=None, output_dir=output_dir, merge=merge)
 
 
-def bilibili_download_by_cid(cid, title, output_dir='.', merge=True, info_only=False):
+def bilibili_download_by_cid(cid, title, output_dir='.', merge=True, info_only=False, tags=None):
     while True:
         try:
             sign_this = hashlib.md5(bytes('cid={cid}&from=miniplay&player=1{SECRETKEY_MINILOADER}'.format(cid = cid, SECRETKEY_MINILOADER = SECRETKEY_MINILOADER), 'utf-8')).hexdigest()
@@ -101,7 +101,7 @@ def bilibili_download_by_cid(cid, title, output_dir='.', merge=True, info_only=F
                 _, type_, temp = url_info(url)
                 size += temp or 0
 
-            print_info(site_info, title, type_, size)
+            print_info(site_info, title, type_, size, tags=tags)
             if not info_only:
                 download_urls(urls, title, type_, total_size=None, output_dir=output_dir, merge=merge, timeout=1)
         except socket.timeout:
@@ -110,14 +110,14 @@ def bilibili_download_by_cid(cid, title, output_dir='.', merge=True, info_only=F
             break
 
 
-def bilibili_live_download_by_cid(cid, title, output_dir='.', merge=True, info_only=False):
+def bilibili_live_download_by_cid(cid, title, output_dir='.', merge=True, info_only=False, tags=None):
     api_url = 'http://live.bilibili.com/api/playurl?cid=' + cid
     urls = parse_cid_playurl(get_content(api_url))
 
     for url in urls:
         _, type_, _ = url_info(url)
         size = 0
-        print_info(site_info, title, type_, size)
+        print_info(site_info, title, type_, size, tags=tags)
         if not info_only:
             download_urls([url], title, type_, total_size=None, output_dir=output_dir, merge=merge)
 
@@ -127,6 +127,10 @@ def bilibili_download(url, output_dir='.', merge=True, info_only=False, **kwargs
 
     title = r1_of([r'<meta name="title" content="\s*([^<>]{1,999})\s*" />',
                    r'<h1[^>]*>\s*([^<>]+)\s*</h1>'], html)
+
+    tags = r1_of([r'<meta name="keywords" content="\s*([^<>]{1,999})\s*" />',
+                   r'<h1[^>]*>\s*([^<>]+)\s*</h1>'], html)
+
     if title:
         title = unescape_html(title)
         title = escape_file_path(title)
@@ -138,7 +142,7 @@ def bilibili_download(url, output_dir='.', merge=True, info_only=False, **kwargs
                             post_data={'episode_id': episode_id})
         cid = json.loads(cont)['result']['cid']
         title = '%s [%s]' % (title, episode_id)
-        bilibili_download_by_cid(str(cid), title, output_dir=output_dir, merge=merge, info_only=info_only)
+        bilibili_download_by_cid(str(cid), title, output_dir=output_dir, merge=merge, info_only=info_only, tags=tags)
 
     else:
         flashvars = r1_of([r'(cid=\d+)', r'(cid: \d+)', r'flashvars="([^"]+)"',
@@ -150,7 +154,7 @@ def bilibili_download(url, output_dir='.', merge=True, info_only=False, **kwargs
         if t == 'cid':
             if re.match(r'https?://live\.bilibili\.com/', url):
                 title = r1(r'<title>\s*([^<>]+)\s*</title>', html)
-                bilibili_live_download_by_cid(cid, title, output_dir=output_dir, merge=merge, info_only=info_only)
+                bilibili_live_download_by_cid(cid, title, output_dir=output_dir, merge=merge, info_only=info_only, tags=tags)
 
             else:
                 # multi-P
@@ -184,7 +188,7 @@ def bilibili_download(url, output_dir='.', merge=True, info_only=False, **kwargs
                                              completeTitle,
                                              output_dir=output_dir,
                                              merge=merge,
-                                             info_only=info_only)
+                                             info_only=info_only, tags=tags)
 
         elif t == 'vid':
             sina_download_by_vid(cid, title=title, output_dir=output_dir, merge=merge, info_only=info_only)

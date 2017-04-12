@@ -1004,9 +1004,9 @@ def playlist_not_supported(name):
         raise NotImplementedError('Playlist is not supported for ' + name)
     return f
 
-def print_info(site_info, title, type, size):
+def print_info(site_info, title, type, size, tags=None):
     if json_output:
-        json_output_.print_info(site_info=site_info, title=title, type=type, size=size)
+        json_output_.print_info(site_info=site_info, title=title, type=type, size=size, tags=tags)
         return
     if type:
         type = type.lower()
@@ -1075,6 +1075,8 @@ def print_info(site_info, title, type, size):
 
     maybe_print("Site:      ", site_info)
     maybe_print("Title:     ", unescape_html(tr(title)))
+    if tags:
+        maybe_print("Tags:         ", unescape_html(tr(tags)))
     print("Type:      ", type_info)
     print("Size:      ", round(size / 1048576, 2), "MiB (" + str(size) + " Bytes)")
     print()

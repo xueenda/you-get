@@ -9,6 +9,7 @@ def output(video_extractor, pretty_print=True):
     out = {}
     out['url'] = ve.url
     out['title'] = ve.title
+    out['tags'] = ve.tags
     out['site'] = ve.name
     out['streams'] = ve.streams
     try:
@@ -25,7 +26,7 @@ def output(video_extractor, pretty_print=True):
 class VideoExtractor(object):
     pass
 
-def print_info(site_info=None, title=None, type=None, size=None):
+def print_info(site_info=None, title=None, type=None, size=None, tags=None):
     global last_info
     # create a VideoExtractor and save info for download_urls()
     ve = VideoExtractor()
@@ -33,6 +34,7 @@ def print_info(site_info=None, title=None, type=None, size=None):
     ve.name = site_info
     ve.title = title
     ve.url = None
+    ve.tags = tags
 
 def download_urls(urls=None, title=None, ext=None, total_size=None, refer=None):
     ve = last_info
