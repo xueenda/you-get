@@ -75,6 +75,7 @@ SITES = {
     'tumblr'           : 'tumblr',
     'twimg'            : 'twitter',
     'twitter'          : 'twitter',
+    'ucas'             : 'ucas',
     'videomega'        : 'videomega',
     'vidto'            : 'vidto',
     'vimeo'            : 'vimeo',
@@ -137,6 +138,29 @@ if sys.stdout.isatty():
 else:
     default_encoding = locale.getpreferredencoding().lower()
 
+def rc4(key, data):
+#all encryption algo should work on bytes
+    assert type(key)==type(data) and type(key) == type(b'')
+    state = list(range(256))
+    j = 0
+    for i in range(256):
+        j += state[i] + key[i % len(key)]
+        j &= 0xff
+        state[i], state[j] = state[j], state[i]
+
+    i = 0
+    j = 0
+    out_list = []
+    for char in data:
+        i += 1
+        i &= 0xff
+        j += state[i]
+        j &= 0xff
+        state[i], state[j] = state[j], state[i]
+        prn = state[(state[i] + state[j]) & 0xff]
+        out_list.append(char ^ prn)
+
+    return bytes(out_list)
 def maybe_print(*s):
     try: print(*s)
     except: pass
@@ -521,7 +545,8 @@ def url_save(url, filepath, bar, refer = None, is_part = False, faker = False, h
             headers = headers
         else:
             headers = {}
-        headers['Range'] = 'bytes=' + str(received) + '-'
+        if received:
+            headers['Range'] = 'bytes=' + str(received) + '-'
         if refer:
             headers['Referer'] = refer
 
@@ -972,7 +997,7 @@ def download_rtmp_url(url,title, ext,params={}, total_size=0, output_dir='.', re
     assert has_rtmpdump_installed(), "RTMPDump not installed."
     download_rtmpdump_stream(url,  title, ext,params, output_dir)
 
-def download_url_ffmpeg(url,title, ext,params={}, total_size=0, output_dir='.', refer=None, merge=True, faker=False):
+def download_url_ffmpeg(url,title, ext,params={}, total_size=0, output_dir='.', refer=None, merge=True, faker=False, stream=True):
     assert url
     if dry_run:
         print('Real URL:\n%s\n' % [url])
@@ -995,7 +1020,7 @@ def download_url_ffmpeg(url,title, ext,params={}, total_size=0, output_dir='.', 
 
     title = tr(get_filename(title))
 
-    ffmpeg_download_stream(url, title, ext, params, output_dir)
+    ffmpeg_download_stream(url, title, ext, params, output_dir, stream=stream)
 
 def playlist_not_supported(name):
     def f(*args, **kwargs):
@@ -1192,10 +1217,11 @@ def script_main(script_name, download, download_playlist, **kwargs):
     -t | --timeout <SECONDS>            Set socket timeout.
     -d | --debug                        Show traceback and other debug info.
     -I | --input-file                   Read non-playlist urls from file.
+    -P | --password <PASSWORD>          Set video visit password to PASSWORD.
     '''
 
-    short_opts = 'Vhfiuc:ndF:O:o:p:x:y:s:t:I:'
-    opts = ['version', 'help', 'force', 'info', 'url', 'cookies', 'no-caption', 'no-merge', 'no-proxy', 'debug', 'json', 'format=', 'stream=', 'itag=', 'output-filename=', 'output-dir=', 'player=', 'http-proxy=', 'socks-proxy=', 'extractor-proxy=', 'lang=', 'timeout=', 'input-file=']
+    short_opts = 'Vhfiuc:ndF:O:o:p:x:y:s:t:I:P:'
+    opts = ['version', 'help', 'force', 'info', 'url', 'cookies', 'no-caption', 'no-merge', 'no-proxy', 'debug', 'json', 'format=', 'stream=', 'itag=', 'output-filename=', 'output-dir=', 'player=', 'http-proxy=', 'socks-proxy=', 'extractor-proxy=', 'lang=', 'timeout=', 'input-file=', 'password=']
 #dead code? download_playlist is a function and always True
 #if download_playlist:
     short_opts = 'l' + short_opts
@@ -1229,6 +1255,7 @@ def script_main(script_name, download, download_playlist, **kwargs):
     traceback = False
     timeout = 600
     urls_from_file = []
+    password = None
 
     for o, a in opts:
         if o in ('-V', '--version'):
@@ -1307,6 +1334,8 @@ def script_main(script_name, download, download_playlist, **kwargs):
             lang = a
         elif o in ('-t', '--timeout'):
             timeout = int(a)
+        elif o in ('-P', '--password',):
+            password = a
         elif o in ('-I', '--input-file'):
             logging.debug('you are trying to load urls from {}'.format(a))
             if playlist:
@@ -1414,7 +1443,7 @@ def url_to_module(url):
         video_host = r1(r'https?://([^/]+)/', url)
         video_url = r1(r'https?://[^/]+(.*)', url)
 
-    if video_host.endswith('.com.cn'):
+    if video_host.endswith('.com.cn') or video_host.endswith('.ac.cn'):
         video_host = video_host[:-3]
     domain = r1(r'(\.[^.]+\.[^.]+)$', video_host) or video_host
     assert domain, 'unsupported url: ' + url
